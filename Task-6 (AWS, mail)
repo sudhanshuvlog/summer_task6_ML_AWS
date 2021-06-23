@@ -1,0 +1,104 @@
+# AWS CLI Automation
+def aws():
+    import json
+    import subprocess
+    import os
+    import time
+
+    name=input("Enter the name of Instance: ")
+    #key=input("Enter Key name: ")
+    key="aws2020key"
+
+    ami= "ami-0ad704c126371a549"
+    sg = "sg-08acdd2eff8c4add5"
+    sub_id="subnet-69131a01"
+
+    instance="aws ec2 run-instances --image-id " + ami + " --subnet-id " + sub_id + " --instance-type t2.micro --count 1 --tag-specification ResourceType=instance,Tags=[{Key=Name,Value="+name+"}] --security-group-ids "+ sg +" --key-name "+key
+    subprocess.getoutput(instance)
+
+    o=subprocess.getoutput("aws ec2 describe-instances")
+    o1=json.loads(o)
+    def ins_id_finder(o1):
+        i=0
+        while o1['Reservations']:
+            #try:
+                if o1['Reservations'][i]['Instances'][0]['Tags'][0]['Value']==name:
+                    ins_id=o1['Reservations'][i]['Instances'][0]['InstanceId']
+                    print(ins_id)
+                    return ins_id
+                    break
+                else:
+                    i=i+1
+                
+            #except:
+                #break
+        
+
+    volume=subprocess.getoutput("aws ec2 create-volume --availability-zone ap-south-1a --size 5 --tag-specifications ResourceType=volume,Tags=[{Key=Name,Value="+name+"-volume}]")
+    vol_id=json.loads(volume)['VolumeId']
+    ins_id=ins_id_finder(o1)
+    time.sleep(20)
+    attach_volume="aws ec2 attach-volume --instance-id "+ins_id+" --volume-id "+vol_id+" --device /dev/xvdg"
+    subprocess.getoutput(attach_volume)
+    
+def mail():
+    from ipynb.fs.full.email_credential_code import *
+    from email.message import EmailMessage
+    import smtplib
+    msg=EmailMessage()
+    msg['Subject']='!!Work Update!!'
+    msg['From']=email_credentials()[0]
+    msg['to']='pandeysudhanshuup@gmail.com'
+    msg.set_content('AWS Instance has been launched. Task Successfully Completed!!')
+    with smtplib.SMTP_SSL('smtp.gmail.com',465) as smtp:
+        credential=email_credentials()
+        smtp.login(credential[0],credential[1])
+        smtp.send_message(msg)
+
+# Face Recognition and calling aws() & mail()      
+from keras.models import load_model
+m=load_model("sudha_kal_model_12_06.h5")
+import cv2
+import numpy
+import time
+cap=cv2.VideoCapture(0)
+cascPath="opencv-master/data/haarcascades/haarcascade_frontalface_default.xml"
+faceCascade=cv2.CascadeClassifier(cascPath)
+while True:
+    #try:
+        ret, image=cap.read()
+        faces=faceCascade.detectMultiScale(image)
+        for (x,y,w,h) in faces:
+            #grey_image_with_box=cv2.rectangle(grey_image,(x,y),(x+w,y+h),(0,255,0),2)
+            image_with_box=cv2.rectangle(image,(x,y),(x+w,y+h),(0,0,0),2)
+        image_with_box_resize=cv2.resize(image_with_box[x:x+h,y:y+w],(150,150))
+        #cv2.imshow('me',grey_image_with_box[x:x+h,y:y+w])
+        ##cv2.imshow('me',image_with_box[x:x+h,y:y+w])
+        
+        
+        z=numpy.expand_dims(image_with_box_resize,axis=0)
+        x=m.predict(z)
+        #print(x)
+        #cv2.putText(face, str(count), (50, 50),cv2.FONT_HERSHEY_COMPLEX, 1, (0,255,0), 2)
+        if(x>0.8):
+            cv2.putText(image_with_box,"Hey, Sudhanshu",(70,70),cv2.FONT_HERSHEY_COMPLEX, 1, (255,0,0), 2)
+            
+        else:
+            cv2.putText(image_with_box, "Hey, Kalyani",(70,70),cv2.FONT_HERSHEY_COMPLEX, 1, (255,0,0), 2)
+            #cv2.imshow('me',image_with_box)
+            aws()
+            mail()
+            print("Work Done :)")
+            #break
+        cv2.imshow('me',image_with_box)
+        #time.sleep(10)
+        #cv2.waitKey(10)
+        if cv2.waitKey(50000)==13 :
+            break
+        #break
+            
+    #except:
+        #pass
+    
+cv2.destroyAllWindows()
+cap.release()
