@@ -95,8 +95,7 @@ while True:
         #cv2.waitKey(10)
         if cv2.waitKey(50000)==13 :
             break
-        #break
-            
+        #break   
     #except:
         #pass
     
