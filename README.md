@@ -1,0 +1,1 @@
+# summer_task7_ML_AWS
